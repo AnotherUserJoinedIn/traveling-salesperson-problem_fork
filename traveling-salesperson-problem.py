@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+
 import numpy as np
 
 import networkx as nx
@@ -26,6 +27,12 @@ from minorminer import find_embedding
 import dimod
 from dwave.embedding import embed_qubo, unembed_sampleset
 from dwave.embedding.chain_breaks import majority_vote, discard, weighted_random, MinimizeEnergy
+
+from dwave.cloud.client import Client
+
+
+# Results storage folder
+storage_folder = "./result"
 
 
 
@@ -97,8 +104,15 @@ qubo, offset = model.to_qubo(feed_dict=feed_dict)
 
 adjacency = {key: 1.0 for key in qubo.keys() if key[0]!=key[1]}
 
-# Run QUBO on DW_2000Q_5
-sampler = DWaveSampler(solver='DW_2000Q_5')
+
+# # List the solvers available with this Client
+# with Client.from_config() as client:   
+#     print(client.get_solvers())
+
+
+# Run QUBO on DW_2000Q_6
+# sampler = DWaveSampler(solver='DW_2000Q_5')
+sampler = DWaveSampler(solver='DW_2000Q_6')
 embedding = find_embedding(adjacency, sampler.edgelist)
 qubo_emb = embed_qubo(qubo, embedding, sampler.adjacency)
 response = sampler.sample_qubo(qubo_emb, num_reads=1000, postprocess='optimization')
@@ -122,8 +136,10 @@ def check_constraint(samples):
         count = 0
         for s in samples.record['sample']:
             sample_dict = {idx: s[i] for i,idx in enumerate(samples.variables)}
-            decoded, broken, energy = model.decode_solution(sample_dict, 'BINARY', feed_dict=feed_dict) 
-            if broken == {}:
+            # decoded, broken, energy = model.decode_solution(sample_dict, 'BINARY', feed_dict=feed_dict)
+            # if broken == {}:
+            decoded_sample = model.decode_sample(sample_dict, 'BINARY', feed_dict=feed_dict) 
+            if (len(decoded_sample.constraints(only_broken=True)) == 0):
                 count += 1
         return count/1000
     else:
@@ -148,7 +164,7 @@ plt.xlabel('Energy')
 plt.ylabel('Frequency')
 plt.legend()
 plt.title('Energy distribution in each chain_break_method', y=1.05)
-plt.savefig('energy_distribution.png')
+plt.savefig(f"{storage_folder}/energy_distribution.png")
 
 def create_order(solution_arr):
     """Create an array which shows traveling order from the solution"""
@@ -202,4 +218,4 @@ for samples, name in zip(sampleset, names):
     else:
         solution = lowest[0].reshape(N-1, N-1)
         show_result(solution, name)
-        plt.savefig(name + '.png')
+        plt.savefig(f"{storage_folder}/{name}.png")
