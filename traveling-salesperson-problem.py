@@ -66,7 +66,6 @@ for i in range(N):
 
 
 # --- Problem formulation ---
-
 # Use pyqubo package
 q = Array.create('q', shape=(N-1, N-1), vartype='BINARY')
 
